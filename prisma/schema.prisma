@@ -13,3 +13,181 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+
+// prisma/schema.prisma
+
+
+//
+// Enums
+//
+enum CandidateRole {
+  CREATOR
+  MEMBER
+}
+
+//
+// NextAuth core models (compatible with PrismaAdapter)
+// You’ll use Credentials + JWT sessions, but keeping these
+// makes future providers or DB sessions easy.
+//
+model User {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  username      String   @unique
+  // Optional unique handle for @mentions (nice to have in UI; can be prefilled from name)
+  passwordHash  String
+  image         String?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // NextAuth relations
+  accounts      Account[]
+  sessions      Session[]
+
+  // App relations
+  candidates    Candidate[]       @relation("CandidatesCreated")
+  notes         Note[]            @relation("NotesAuthored")
+  mentions      Mention[]         @relation("UserMentions")
+  notifications Notification[]
+  memberships   CandidateMember[]
+
+  @@index([name])
+  @@index([username])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+//
+// App models
+//
+
+// Minimal Candidate; email is optional (MVP uses dummy candidates)
+model Candidate {
+  id           String    @id @default(cuid())
+  name         String
+  email        String?
+  createdById  String?
+  createdBy    User?     @relation("CandidatesCreated", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  notes        Note[]
+  members      CandidateMember[]
+  notifications Notification[]
+
+  @@index([name])
+  @@index([email])
+  @@index([createdById])
+}
+
+// Plain text notes (server will sanitize/escape for XSS)
+model Note {
+  id           String    @id @default(cuid())
+  candidateId  String
+  authorId     String
+  content      String    @db.Text
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  candidate    Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  author       User      @relation("NotesAuthored", fields: [authorId], references: [id], onDelete: Cascade)
+  mentions     Mention[]
+  notifications Notification[]
+
+  // Efficient candidate room pagination (createdAt cursor)
+  @@index([candidateId, createdAt])
+}
+
+// Each distinct mentioned user per note (precomputed for easy joins + highlighting)
+model Mention {
+  id               String   @id @default(cuid())
+  noteId           String
+  mentionedUserId  String
+  createdAt        DateTime @default(now())
+
+  note             Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  mentionedUser    User     @relation("UserMentions", fields: [mentionedUserId], references: [id], onDelete: Cascade)
+
+  // Prevent duplicate mentions of the same user on the same note
+  @@unique([noteId, mentionedUserId])
+
+  @@index([mentionedUserId])
+  @@index([noteId])
+}
+
+// Durable notifications so dashboard can hydrate even if user was offline.
+// For MVP all notifications are "mention" type; preview is a short snippet.
+model Notification {
+  id          String    @id @default(cuid())
+  userId      String
+  candidateId String
+  noteId      String
+  preview     String    @db.VarChar(200)
+  createdAt   DateTime  @default(now())
+  readAt      DateTime?
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  note        Note      @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  // Fast unread queries + sensible ordering
+  @@index([userId, readAt, createdAt])
+
+  // One durable notification per user per note keeps things tidy
+  @@unique([userId, noteId])
+}
+
+// Optional membership (simple access control). On note creation, you can
+// upsert membership for the author and any mentioned users.
+model CandidateMember {
+  candidateId String
+  userId      String
+  role        CandidateRole @default(MEMBER)
+  createdAt   DateTime      @default(now())
+
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Composite PK doubles as unique constraint
+  @@id([candidateId, userId])
+
+  @@index([userId])
+}
