@@ -5,6 +5,7 @@ import useSWRInfinite from "swr/infinite";
 import Pusher from "pusher-js";
 import { useRouter } from "next/navigation";
 import { FiBell, FiCheck, FiLoader } from "react-icons/fi";
+import { NotificationsSkeleton } from "../ui/Loaders";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -55,8 +56,10 @@ export default function NotificationsCard({
 
 	const { data, size, setSize, isLoading, isValidating, mutate } =
 		useSWRInfinite<PageData>(getKey, fetcher, {
-			refreshInterval: 25_000, // durable fallback polling
+			refreshInterval: 25_000,
 			revalidateOnFocus: true,
+			revalidateFirstPage: true,
+			// suspense: true, // optional with <Suspense fallback={<NotificationsSkeleton/>}>
 		});
 
 	const items = useMemo(
@@ -66,10 +69,14 @@ export default function NotificationsCard({
 	const hasMore = (data?.[data.length - 1]?.nextCursor ?? null) !== null;
 	const unreadCount = data?.[0]?.unreadCount ?? 0;
 
-	// Mirror top unread badge in local state for snappy UI
+	// Loading states
+	const initialLoading = (!data && isValidating) || isLoading;
+	const firstPageRefreshing = !!data && isValidating && size === 1;
+	const loadingMore = isValidating && size > 1;
+
 	useEffect(() => setUnreadBadge(unreadCount), [unreadCount]);
 
-	// Realtime updates (Pusher). Requires <meta name="x-user-id" content="{id}" /> in RootLayout
+	// Realtime via Pusher
 	useEffect(() => {
 		const key = process.env.NEXT_PUBLIC_PUSHER_KEY!;
 		const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER!;
@@ -118,9 +125,19 @@ export default function NotificationsCard({
 		return () => io.disconnect();
 	}, [hasMore, isValidating, setSize]);
 
+	// ⏳ Full skeleton on first mount
+	if (initialLoading) {
+		return <NotificationsSkeleton />;
+	}
+
 	return (
 		<div
-			className={`rounded-2xl border border-white/10 bg-white/5 p-4 ${className}`}>
+			className={`relative rounded-2xl border border-white/10 bg-white/5 p-4 ${className}`}>
+			{/* Optional subtle overlay when first page is refreshing */}
+			{firstPageRefreshing && (
+				<div className="pointer-events-none absolute inset-0 z-10 rounded-2xl bg-white/40 backdrop-blur-sm dark:bg-black/30" />
+			)}
+
 			<div className="mb-3 flex items-center justify-between">
 				<div className="flex items-center gap-2">
 					<FiBell className="h-5 w-5" />
@@ -141,12 +158,7 @@ export default function NotificationsCard({
 			</div>
 
 			<div className="max-h-[28rem] overflow-auto rounded-xl">
-				{isLoading && items.length === 0 ? (
-					<div className="flex items-center justify-center gap-2 py-12 text-sm text-white/70">
-						<FiLoader className="h-4 w-4 animate-spin" />
-						Loading notifications…
-					</div>
-				) : items.length === 0 ? (
+				{items.length === 0 ? (
 					<div className="py-10 text-center text-sm text-gray/70">
 						You&apos;re all caught up!
 					</div>
@@ -157,9 +169,9 @@ export default function NotificationsCard({
 								key={n.id}
 								className={`rounded-lg p-3 transition ${
 									n.readAt
-										? "bg-gray-200"
+										? "bg-gray-200/20"
 										: "bg-blue-200/10 ring-1 ring-blue-500/20"
-								} hover:bg-white/[0.08]`}>
+								} hover:bg-gray-400/20`}>
 								<div className="flex items-start justify-between gap-3">
 									<div className="min-w-0">
 										<div className="flex flex-wrap items-center gap-2 text-xs text-gray-950/60">
@@ -201,7 +213,7 @@ export default function NotificationsCard({
 								<div
 									ref={sentinelRef}
 									className="flex items-center justify-center gap-2 py-3 text-xs text-white/60">
-									{isValidating ? (
+									{loadingMore ? (
 										<>
 											<FiLoader className="h-4 w-4 animate-spin" />
 											Loading more…

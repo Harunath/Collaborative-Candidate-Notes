@@ -86,24 +86,6 @@ export default function RegisterPage() {
 						"radial-gradient(600px 300px at 80% 10%, rgba(59,130,246,0.35), transparent 60%), radial-gradient(600px 300px at 20% 90%, rgba(236,72,153,0.35), transparent 60%)",
 				}}
 			/>
-
-			<header className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4 sm:py-6">
-				<div className="flex items-center gap-2">
-					<div className="h-8 w-8 rounded-xl bg-gradient-to-tr from-indigo-500 to-fuchsia-500 shadow-lg" />
-					<span className="text-lg font-semibold tracking-tight">YourApp</span>
-				</div>
-
-				<button
-					onClick={() => setIsDark((v) => !v)}
-					className="group inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-3 py-1.5 text-sm shadow-sm transition hover:bg-neutral-50 active:scale-[0.98] dark:border-white/10 dark:bg-white/10 dark:hover:bg-white/15"
-					aria-label="Toggle theme">
-					<span className="block h-4 w-4 rounded-full bg-neutral-900 transition group-hover:scale-110 dark:bg-white" />
-					<span className="hidden sm:block">
-						{isDark ? "Dark" : "Light"} mode
-					</span>
-				</button>
-			</header>
-
 			<main className="mx-auto grid min-h-[calc(100vh-80px)] w-full max-w-6xl grid-cols-1 items-center gap-10 px-4 py-6 md:grid-cols-2">
 				{/* Left: blurb */}
 				<section className="order-2 md:order-1">
