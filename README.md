@@ -1,36 +1,118 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Collaborative Candidate Notes
 
-## Getting Started
+A **real-time candidate feedback app** built for the Algohire Full-Stack Developer Hackathon.
+It enables recruiters and hiring managers to collaborate on candidate notes, tag colleagues with `@username`, and get real-time notifications.
 
-First, run the development server:
+---
+
+## 🚀 Tech Stack
+
+* **Next.js 15 (App Router)** – frontend + backend routes
+* **NextAuth (Credentials Provider)** – authentication
+* **Prisma ORM + PostgreSQL** – database
+* **Pusher Channels** – real-time messaging
+* **Tailwind CSS** – modern responsive UI
+* **TypeScript** – type safety
+
+---
+
+## ⚙️ Setup Instructions
+
+### 1. Clone the repo
+
+```bash
+git clone https://github.com/your-username/collaborative-candidate-notes.git
+cd collaborative-candidate-notes
+```
+
+### 2. Install dependencies
+
+```bash
+npm install
+# or
+yarn install
+```
+
+### 3. Configure environment variables
+
+Create a **.env.local** file in the project root:
+
+```env
+# Database
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DBNAME"
+
+# NextAuth
+NEXTAUTH_SECRET="your-secret"
+NEXTAUTH_URL="http://localhost:3000"
+
+# Pusher
+PUSHER_APP_ID="your-app-id"
+PUSHER_KEY="your-key"
+PUSHER_SECRET="your-secret"
+PUSHER_CLUSTER="ap2" # or your region
+```
+
+### 4. Setup the database
+
+Run Prisma migrations to generate tables:
+
+```bash
+# Local dev (creates migrations)
+npx prisma migrate dev
+
+# Production deploy (applies existing migrations)
+npx prisma migrate deploy
+```
+
+(Optional) Seed dummy users/candidates:
+
+```bash
+npx prisma db seed
+```
+
+### 5. Run the development server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Visit [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 📖 Usage Guide
 
-## Learn More
+1. **Sign Up & Login**
 
-To learn more about Next.js, take a look at the following resources:
+   * Create an account with **name, email, password**.
+   * Login securely; unauthenticated users are redirected.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+2. **Dashboard**
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+   * View a list of candidates.
+   * Add dummy candidates (name + email).
 
-## Deploy on Vercel
+3. **Candidate Notes**
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+   * Click a candidate → opens a **real-time notes room**.
+   * Post messages with `@username` to tag colleagues.
+   * Messages instantly broadcast to all viewers.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+4. **Notifications**
+
+   * If you are tagged, you receive:
+
+     * A toast / badge notification.
+     * A persistent entry in the **Notifications card** on the dashboard.
+   * Click a notification → jumps directly to the tagged message.
+
+---
+
+## 🔒 Security
+
+* All routes protected with NextAuth.
+* Only authenticated users can view/write notes.
+* Inputs are sanitized to prevent XSS/injection.
+
+---
+
